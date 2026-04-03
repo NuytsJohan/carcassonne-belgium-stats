@@ -1,206 +1,274 @@
 """
-Fetch Carcassonne game data from BoardGameArena (BGA).
+Fetch Carcassonne game data from BoardGameArena via Playwright (headless browser).
 
-BGA has no official API. This module uses internal endpoints discovered
-through reverse engineering. Use responsibly:
-- Always add a delay between requests (default 1.5s)
-- Only fetch data for your own community/players
-- Do not run bulk imports during peak hours
+Playwright logt automatisch in op BGA en haalt speldata op via de interne API.
+Geen manuele stappen nodig — volledig geautomatiseerd.
 
-BGA Carcassonne game_id = 1
+Gebruik:
+    python -m src.importers.bga_fetcher
+
+Of via environment variabelen:
+    BGA_EMAIL=... BGA_PASSWORD=... python -m src.importers.bga_fetcher
 """
 
-import time
+import asyncio
+import json
 import logging
-import re
+import os
+import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
-import requests
+from playwright.async_api import async_playwright, Page
 
 logger = logging.getLogger(__name__)
 
-BGA_BASE = "https://boardgamearena.com"
+BGA_URL = "https://en.boardgamearena.com"
 CARCASSONNE_GAME_ID = 1
+CHUNK_DAYS = 90
+REQUEST_DELAY = 1.2  # seconden tussen API aanroepen
+SESSION_PATH = Path("data/bga_session")
 
 
-class BGASession:
-    """Authenticated BGA session."""
+# ---------------------------------------------------------------------------
+# Login
+# ---------------------------------------------------------------------------
 
-    def __init__(self, email: str, password: str):
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "application/json, text/javascript, */*",
-            "Referer": BGA_BASE,
-        })
-        self._login(email, password)
+async def login(page: Page, email: str, password: str) -> None:
+    """
+    Log in op BGA. Tweestapslogin:
+      Stap 1: email invullen in het login-formulier → klik de blauwe Next-link
+      Stap 2: wachtwoord invullen → klik Login
+    """
+    logger.info("Navigeren naar BGA login ...")
+    await page.goto(f"{BGA_URL}/account", wait_until="networkidle")
 
-    def _login(self, email: str, password: str) -> None:
-        # Stap 1: haal de login pagina op om het CSRF token te bemachtigen
-        resp = self.session.get(f"{BGA_BASE}/account")
-        resp.raise_for_status()
+    # Cookie banner wegklikken indien aanwezig
+    try:
+        await page.click("button:has-text('Reject all')", timeout=4000)
+        logger.info("  Cookie banner gesloten.")
+    except Exception:
+        pass
 
-        # requestToken zit als JS variabele in de HTML
-        match = re.search(r'"requestToken"\s*:\s*"([^"]+)"', resp.text)
-        if not match:
-            # Alternatieve locatie
-            match = re.search(r"requestToken['\"]?\s*[=:]\s*['\"]([^'\"]+)['\"]", resp.text)
-        if not match:
-            raise ValueError("Kon requestToken niet vinden op BGA login pagina.")
+    # ----------------------------------------------------------------
+    # Stap 1: email invullen
+    # Het login-formulier bevat een <form class="space-y-2"> met de
+    # "Next" knop als <a class="bga-button-inner ...">
+    # We targetten de email-input BINNEN die form.
+    # ----------------------------------------------------------------
+    login_form = page.locator("form:has(a.bga-button-inner)").first
+    await login_form.wait_for(state="visible", timeout=10000)
 
-        csrf_token = match.group(1)
+    email_input = login_form.locator("input[name='email']").first
+    await email_input.fill(email)
 
-        # Stap 2: inloggen
-        resp = self.session.post(
-            f"{BGA_BASE}/account/account/login.html",
-            data={
-                "email": email,
-                "password": password,
-                "rememberme": "on",
-                "request_token": csrf_token,
-            },
+    # Klik de Next link (de blauwe knop)
+    await login_form.locator("a.bga-button-inner").click()
+    logger.info("  Stap 1 (email) ingediend, wachten op wachtwoordveld ...")
+
+    # ----------------------------------------------------------------
+    # Stap 2: wachtwoord invullen
+    # Na Next verschijnt een wachtwoordveld. BGA rendert het als
+    # type="password" of soms als type="text" met autocomplete="password".
+    # ----------------------------------------------------------------
+    pwd_locator = page.locator(
+        "input[type='password'], input[autocomplete='current-password'], "
+        "input[autocomplete='password']"
+    ).first
+    try:
+        await pwd_locator.wait_for(state="visible", timeout=10000)
+    except Exception:
+        await page.screenshot(path="data/bga_debug_step2.png")
+        raise ValueError("Wachtwoordveld niet gevonden na Next. Screenshot: data/bga_debug_step2.png")
+
+    await pwd_locator.fill(password)
+
+    # Klik de blauwe "Login" knop (exacte tekst, blauwe klasse)
+    await page.locator("a.bga-button--blue:has-text('Login')").click()
+    logger.info("  Stap 2 (wachtwoord) ingediend ...")
+
+    # ----------------------------------------------------------------
+    # Wacht tot we weg zijn van de login stap, navigeer dan naar gamestats
+    # ----------------------------------------------------------------
+    await asyncio.sleep(2)  # korte wachttijd voor redirect/animatie
+
+    # Als we nog op account pagina zitten: navigeer direct naar gamestats
+    if "/account" in page.url:
+        await page.goto("https://boardgamearena.com/gamestats", wait_until="networkidle", timeout=20000)
+
+    logger.info(f"BGA login geslaagd. URL: {page.url}")
+
+
+# ---------------------------------------------------------------------------
+# Games ophalen via browser fetch (zelfde als console aanpak)
+# ---------------------------------------------------------------------------
+
+async def fetch_games_chunk(
+    page: Page,
+    player_id: int,
+    start_ts: int,
+    end_ts: int,
+) -> list[dict]:
+    """Roep de BGA gamestats API aan vanuit de browser context (al ingelogd)."""
+
+    js = """
+    async ([playerId, startTs, endTs, gameId]) => {
+        const params = new URLSearchParams({
+            player: playerId,
+            opponent_id: 0,
+            game_id: gameId,
+            finished: 1,
+            updateStats: 0,
+            start_date: startTs,
+            end_date: endTs,
+            'dojo.preventCache': Date.now()
+        });
+        const url = `/gamestats/gamestats/getGames.html?${params}`;
+        const r = await fetch(url, {credentials: 'include'});
+        const data = await r.json();
+        if (Array.isArray(data)) return data;
+        if (data.data) return data.data;
+        if (data.games) return data.games;
+        if (data.status === '0') throw new Error(data.error || 'BGA fout: ' + JSON.stringify(data));
+        return [];
+    }
+    """
+
+    result = await page.evaluate(js, [player_id, start_ts, end_ts, CARCASSONNE_GAME_ID])
+    return result or []
+
+
+async def fetch_all_games(
+    page: Page,
+    player_id: int,
+    since: datetime,
+    until: Optional[datetime] = None,
+) -> list[dict]:
+    """Haal alle Carcassonne spellen op voor een speler via datum-chunks."""
+    until = until or datetime.utcnow()
+    all_games: list[dict] = []
+    seen: set[str] = set()
+
+    cursor = since
+    while cursor < until:
+        end = min(cursor + timedelta(days=CHUNK_DAYS), until)
+        logger.info(f"  {cursor.strftime('%Y-%m-%d')} → {end.strftime('%Y-%m-%d')} ...")
+
+        chunk = await fetch_games_chunk(
+            page,
+            player_id,
+            int(cursor.timestamp()),
+            int(end.timestamp()),
         )
-        resp.raise_for_status()
 
-        try:
-            data = resp.json()
-        except Exception:
-            raise ValueError("BGA login antwoord is geen JSON — mogelijk geblokkeerd.")
+        new = 0
+        for game in chunk:
+            tid = str(game.get("table_id", ""))
+            if tid and tid not in seen:
+                seen.add(tid)
+                all_games.append(game)
+                new += 1
 
-        if data.get("status") != 1:
-            raise ValueError(f"BGA login mislukt: {data.get('error', data)}")
+        logger.info(f"    {new} nieuw | totaal: {len(all_games)}")
+        cursor = end
+        await asyncio.sleep(REQUEST_DELAY)
 
-        logger.info("BGA login geslaagd.")
+    return all_games
 
-    # ------------------------------------------------------------------
-    # Lage-niveau API aanroep
-    # ------------------------------------------------------------------
 
-    def _get_games_chunk(
-        self,
-        player_id: int,
-        start_ts: Optional[int] = None,
-        end_ts: Optional[int] = None,
-        delay: float = 1.5,
-    ) -> list[dict]:
-        """Één API aanroep voor een specifiek tijdsvenster."""
-        time.sleep(delay)
+# ---------------------------------------------------------------------------
+# Hoofd functie
+# ---------------------------------------------------------------------------
 
-        params: dict = {
-            "player": player_id,
-            "opponent_id": 0,       # 0 = alle tegenstanders
-            "game_id": CARCASSONNE_GAME_ID,
-            "finished": 1,          # enkel afgewerkte spellen
-            "updateStats": 0,
-            "dojo.preventCache": int(time.time() * 1000),
-        }
-        if start_ts:
-            params["start_date"] = start_ts
-        if end_ts:
-            params["end_date"] = end_ts
+async def fetch_and_save(
+    email: str,
+    password: str,
+    player_ids: list[int],
+    since: datetime,
+    output_path: Path = Path("data/raw/bga_games.json"),
+    headless: bool = True,
+) -> dict[str, list]:
+    """
+    Log in op BGA en haal alle Carcassonne spellen op voor de opgegeven spelers.
+    Slaat het resultaat op als JSON.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        resp = self.session.get(
-            f"{BGA_BASE}/gamestats/gamestats/getGames.html",
-            params=params,
-            timeout=30,
-        )
-        resp.raise_for_status()
+    results: dict[str, list] = {}
 
-        data = resp.json()
-
-        # Response kan een lijst zijn of gewrapped in een dict
-        if isinstance(data, list):
-            return data
-        if isinstance(data, dict):
-            # Probeer bekende keys
-            for key in ("data", "games", "items"):
-                if key in data:
-                    return data[key]
-            # Als er geen bekende key is maar er wel game-data lijkt te zijn
-            if "table_id" in data:
-                return [data]  # enkel object
-        return []
-
-    # ------------------------------------------------------------------
-    # Hoge-niveau: alle spellen ophalen via datum-chunks
-    # ------------------------------------------------------------------
-
-    def fetch_all_games(
-        self,
-        player_id: int,
-        since: datetime,
-        until: Optional[datetime] = None,
-        chunk_days: int = 90,
-        delay: float = 1.5,
-    ) -> list[dict]:
-        """
-        Haal alle Carcassonne spellen op voor een speler.
-
-        Gebruikt datum-chunks om paginatie te omzeilen — BGA limiteert
-        het aantal resultaten per aanroep, maar bij een smal tijdsvenster
-        komen alle spellen terug.
-
-        Args:
-            player_id:   BGA player ID
-            since:       Startdatum (bijv. datetime(2020, 1, 1))
-            until:       Einddatum (standaard: nu)
-            chunk_days:  Grootte van elk tijdsvenster in dagen
-            delay:       Wachttijd tussen aanroepen in seconden
-        """
-        until = until or datetime.utcnow()
-        all_games: list[dict] = []
-        seen_ids: set[str] = set()
-
-        cursor = since
-        while cursor < until:
-            end = min(cursor + timedelta(days=chunk_days), until)
-            logger.info(
-                f"  Ophalen {cursor.strftime('%Y-%m-%d')} → {end.strftime('%Y-%m-%d')} "
-                f"voor speler {player_id} ..."
+    async with async_playwright() as pw:
+        # Gebruik opgeslagen sessie indien beschikbaar, anders login via credentials
+        if SESSION_PATH.exists():
+            logger.info(f"Opgeslagen sessie laden uit {SESSION_PATH} ...")
+            context = await pw.chromium.launch_persistent_context(
+                user_data_dir=str(SESSION_PATH),
+                headless=headless,
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             )
-            chunk = self._get_games_chunk(
-                player_id,
-                start_ts=int(cursor.timestamp()),
-                end_ts=int(end.timestamp()),
-                delay=delay,
+            page = await context.new_page()
+            await page.goto("https://boardgamearena.com/gamestats", wait_until="networkidle", timeout=20000)
+        else:
+            if not email or not password:
+                raise ValueError(
+                    f"Geen opgeslagen sessie gevonden in {SESSION_PATH}.\n"
+                    "Voer eerst uit: python scripts/bga_save_session.py"
+                )
+            logger.info("Geen opgeslagen sessie — inloggen met credentials ...")
+            browser = await pw.chromium.launch(headless=headless)
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             )
-            new = 0
-            for game in chunk:
-                tid = str(game.get("table_id", ""))
-                if tid and tid not in seen_ids:
-                    seen_ids.add(tid)
-                    all_games.append(game)
-                    new += 1
-            logger.info(f"    → {new} nieuwe spellen (totaal: {len(all_games)})")
-            cursor = end
+            page = await context.new_page()
+            await login(page, email, password)
+            if "en.boardgamearena.com" in page.url:
+                await page.goto("https://boardgamearena.com/gamestats", wait_until="networkidle", timeout=20000)
 
-        return all_games
+        logger.info(f"Klaar voor API-calls op: {page.url}")
 
-    def get_player_info(self, player_id: int, delay: float = 1.0) -> dict:
-        """
-        Haal spelerprofiel op van BGA.
-        Parseert de HTML profielpagina omdat er geen JSON endpoint voor is.
-        """
-        time.sleep(delay)
-        resp = self.session.get(f"{BGA_BASE}/player?id={player_id}", timeout=30)
-        resp.raise_for_status()
+        for player_id in player_ids:
+            logger.info(f"\nSpeler {player_id} ophalen ...")
+            games = await fetch_all_games(page, player_id, since=since)
+            results[str(player_id)] = games
+            logger.info(f"✓ {len(games)} spellen voor speler {player_id}")
 
-        html = resp.text
-        info: dict = {"bga_player_id": str(player_id)}
+        await browser.close()
 
-        # Naam
-        m = re.search(r'<h1[^>]*class="[^"]*playername[^"]*"[^>]*>([^<]+)</h1>', html)
-        if not m:
-            m = re.search(r'"playername"\s*:\s*"([^"]+)"', html)
-        if m:
-            info["name"] = m.group(1).strip()
+    # Opslaan
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    logger.info(f"\nOpgeslagen in {output_path} ({sum(len(v) for v in results.values())} spellen totaal)")
 
-        # ELO voor Carcassonne (game_id=1)
-        m = re.search(
-            r'game_id["\s:=]+1[^}]{0,200}?"elo"\s*:\s*"?(\d+)"?', html
-        )
-        if m:
-            info["elo"] = int(m.group(1))
+    return results
 
-        return info
+
+# ---------------------------------------------------------------------------
+# CLI / directe uitvoering
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import argparse
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+
+    parser = argparse.ArgumentParser(description="BGA spellen ophalen via headless browser")
+    parser.add_argument("--email",    default=os.environ.get("BGA_EMAIL"))
+    parser.add_argument("--password", default=os.environ.get("BGA_PASSWORD"))
+    parser.add_argument("--players",  nargs="+", type=int, default=[93464744, 84635111, 65246746])
+    parser.add_argument("--since",    default="2020-01-01")
+    parser.add_argument("--output",   default="data/raw/bga_games.json")
+    parser.add_argument("--visible",  action="store_true", help="Browser zichtbaar tonen (voor debuggen)")
+    args = parser.parse_args()
+
+    if not args.email or not args.password:
+        print("Gebruik: --email en --password, of stel BGA_EMAIL / BGA_PASSWORD in.")
+        exit(1)
+
+    asyncio.run(fetch_and_save(
+        email=args.email,
+        password=args.password,
+        player_ids=args.players,
+        since=datetime.strptime(args.since, "%Y-%m-%d"),
+        output_path=Path(args.output),
+        headless=not args.visible,
+    ))
