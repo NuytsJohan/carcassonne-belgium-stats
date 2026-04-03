@@ -9,7 +9,6 @@ Gebruik:
         --since 2022-01-01
 """
 
-import argparse
 import logging
 import re
 from datetime import datetime
@@ -17,7 +16,6 @@ from typing import Optional
 
 import duckdb
 
-from src.importers.bga_fetcher import BGASession
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
@@ -85,16 +83,27 @@ def import_game(conn: duckdb.DuckDBPyConnection, game: dict) -> bool:
     if existing:
         return False
 
-    # Parseer tijdstip
-    played_at = parse_bga_date(str(game.get("start", "")))
+    # Parseer tijdstippen en speelduur
+    played_at  = parse_bga_date(str(game.get("start", "")))
+    ended_at   = parse_bga_date(str(game.get("end",   "")))
+    duration_min = None
+    if played_at and ended_at:
+        secs = (ended_at - played_at).total_seconds()
+        if secs > 0:
+            duration_min = int(secs // 60)
 
-    # Maak spel record aan (tournament_id=NULL voor niet-tornooi spellen)
+    unranked          = str(game.get("unranked",         "0")) == "1"
+    normal_end        = str(game.get("normalend",        "1")) == "1"
+    ranking_disabled  = str(game.get("ranking_disabled", "0")) == "1"
+
     conn.execute(
         """
-        INSERT INTO games (tournament_id, round, bga_table_id, played_at, source)
-        VALUES (NULL, NULL, ?, ?, 'bga')
+        INSERT INTO games
+            (tournament_id, round, bga_table_id, played_at, ended_at,
+             duration_min, unranked, normal_end, ranking_disabled, source)
+        VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, 'bga')
         """,
-        [table_id, played_at],
+        [table_id, played_at, ended_at, duration_min, unranked, normal_end, ranking_disabled],
     )
     game_id = conn.execute(
         "SELECT id FROM games WHERE bga_table_id = ?", [table_id]
@@ -113,111 +122,49 @@ def import_game(conn: duckdb.DuckDBPyConnection, game: dict) -> bool:
         score = float(scores_raw[i]) if i < len(scores_raw) and scores_raw[i] else None
         rank = int(ranks_raw[i]) if i < len(ranks_raw) and ranks_raw[i].isdigit() else None
 
-        # ELO info (enkel beschikbaar voor de hoofdspeler in de ruwe API)
-        elo_delta = None
+        # ELO en arena info (enkel voor speler i==0 beschikbaar in de API)
+        elo_delta   = None
         elo_after_val = None
+        elo_penalty_val = None
+        arena_win_val   = None
+        arena_after_val = None
+
         if i == 0:
-            elo_win_str = str(game.get("elo_win", "") or "")
-            elo_after_html = str(game.get("elo_after", "") or "")
+            elo_win_str     = str(game.get("elo_win",     "") or "")
+            elo_after_raw   = game.get("elo_after",   None)
+            elo_penalty_raw = game.get("elo_penalty",  None)
+            arena_win_raw   = game.get("arena_win",    None)
+            arena_after_raw = game.get("arena_after",  None)
+
             if elo_win_str.lstrip("-").isdigit():
                 elo_delta = int(elo_win_str)
-            m = re.search(r"gamerank_value[^>]*>(\d+)", elo_after_html)
-            if m:
-                elo_after_val = int(m.group(1))
+
+            for raw, target in [(elo_after_raw, "elo_after"), (elo_penalty_raw, "elo_penalty"), (arena_after_raw, "arena_after")]:
+                if raw is not None:
+                    try:
+                        val = int(raw)
+                    except (ValueError, TypeError):
+                        m = re.search(r"(-?\d{1,5})", str(raw))
+                        val = int(m.group(1)) if m else None
+                    if target == "elo_after":    elo_after_val    = val
+                    if target == "elo_penalty":  elo_penalty_val  = val
+                    if target == "arena_after":  arena_after_val  = val
+
+            if arena_win_raw is not None:
+                arena_win_val = bool(int(arena_win_raw)) if str(arena_win_raw).isdigit() else None
 
         player_id = get_or_create_player(conn, bga_pid, name)
         conn.execute(
             """
             INSERT INTO game_players
-                (game_id, player_id, score, rank, elo_delta, elo_after, conceded)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (game_id, player_id, score, rank, elo_delta, elo_after,
+                 elo_penalty, arena_win, arena_after, conceded)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            [game_id, player_id, score, rank, elo_delta, elo_after_val, concede and i != 0],
+            [game_id, player_id, score, rank, elo_delta, elo_after_val,
+             elo_penalty_val, arena_win_val, arena_after_val, concede and i != 0],
         )
 
     return True
 
 
-# ---------------------------------------------------------------------------
-# Hoofd import functie
-# ---------------------------------------------------------------------------
-
-def run_import(
-    email: str,
-    password: str,
-    bga_player_ids: list[int],
-    since: datetime,
-    db_path: str = DB_PATH,
-    chunk_days: int = 90,
-    delay: float = 2.0,
-) -> None:
-    conn = duckdb.connect(db_path)
-
-    # Schema migrations uitvoeren als nog niet gedaan
-    for migration in ["migrations/001_initial_schema.sql", "migrations/002_bga_fields.sql"]:
-        try:
-            with open(migration) as f:
-                conn.executescript(f.read())
-        except Exception as e:
-            logger.warning(f"Migration {migration}: {e}")
-
-    logger.info("Verbinding met BGA ...")
-    bga = BGASession(email, password)
-
-    total_new = 0
-    for player_id in bga_player_ids:
-        logger.info(f"\nSpeler BGA {player_id} ophalen ...")
-        games = bga.fetch_all_games(
-            player_id, since=since, chunk_days=chunk_days, delay=delay
-        )
-        logger.info(f"  {len(games)} spellen opgehaald.")
-
-        new_count = 0
-        for game in games:
-            if import_game(conn, game):
-                new_count += 1
-        logger.info(f"  {new_count} nieuwe spellen geïmporteerd.")
-        total_new += new_count
-
-    conn.close()
-    logger.info(f"\nKlaar. {total_new} nieuwe spellen totaal geïmporteerd.")
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="BGA Carcassonne data importeren")
-    parser.add_argument("--email", required=True, help="BGA email")
-    parser.add_argument("--password", required=True, help="BGA wachtwoord")
-    parser.add_argument(
-        "--players",
-        nargs="+",
-        type=int,
-        required=True,
-        help="BGA player IDs (bijv. --players 84216333 65246746)",
-    )
-    parser.add_argument(
-        "--since",
-        default="2020-01-01",
-        help="Startdatum (YYYY-MM-DD), standaard 2020-01-01",
-    )
-    parser.add_argument("--db", default=DB_PATH, help="Pad naar DuckDB database")
-    parser.add_argument(
-        "--chunk-days", type=int, default=90, help="Dagvenster per API aanroep"
-    )
-    parser.add_argument(
-        "--delay", type=float, default=2.0, help="Vertraging tussen API aanroepen (seconden)"
-    )
-    args = parser.parse_args()
-
-    run_import(
-        email=args.email,
-        password=args.password,
-        bga_player_ids=args.players,
-        since=datetime.strptime(args.since, "%Y-%m-%d"),
-        db_path=args.db,
-        chunk_days=args.chunk_days,
-        delay=args.delay,
-    )

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Linear__list_teams",
+      "mcp__claude_ai_Linear__list_projects",
+      "mcp__claude_ai_Linear__list_issues",
+      "mcp__claude_ai_Linear__list_issue_statuses",
+      "Bash(gh --version)",
+      "Bash(gh auth:*)",
+      "mcp__claude_ai_Linear__save_project",
+      "Bash(.venv/Scripts/python -c ':*)",
+      "Bash(.venv/Scripts/playwright install:*)",
+      "Bash(.venv/Scripts/python -m src.importers.bga_fetcher --email johan.nuyts@gmail.com --password ***REMOVED*** --players 93464744 --since 2025-01-01 --visible)",
+      "Bash(.venv/Scripts/python -m src.importers.bga_fetcher --email johan.nuyts@gmail.com --password ***REMOVED*** --players 93464744 --since 2025-01-01)",
+      "Bash(.venv/Scripts/python -m src.importers.bga_fetcher --email johan.nuyts@gmail.com --password ***REMOVED*** --players 93464744 84635111 65246746 --since 2023-01-01)",
+      "Bash(.venv/Scripts/python -m src.importers.bga_fetcher --players 93464744 84635111 65246746 --since 2020-01-01)",
+      "Bash(start c:/Users/johan/Documents/Projects/Carcassonne/tools/bga_importer.html)",
+      "Bash(.venv/Scripts/python -m src.importers.bga_fetcher --email johan.nuyts@gmail.com --password ***REMOVED*** --players 93464744 84635111 65246746)",
+      "Bash(start /B .venv/Scripts/streamlit run dashboard/app.py --server.headless true)",
+      "Bash(curl -s http://localhost:8501)",
+      "Bash(.venv/Scripts/python -c \"import streamlit; print\\('streamlit ok'\\)\")",
+      "Bash(start cmd:*)",
+      "Bash(start http://localhost:8501)",
+      "Bash(.venv/Scripts/python -c \"from src.importers.bga_importer import import_game, DB_PATH; print\\('OK:', DB_PATH\\)\")",
+      "Bash(taskkill /F /IM streamlit.exe)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq streamlit*\")"
+    ]
+  }
+}
