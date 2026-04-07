@@ -129,6 +129,51 @@ async def _login(page, email: str, password: str) -> None:
     logger.info(f"Ingelogd. URL: {page.url}")
 
 
+# ── Spelersprofiel: land ophalen ──────────────────────────────────────────────
+
+def fetch_player_country(
+    player_id: int,
+    token: str,
+    cookies: dict,
+    delay: float = REQUEST_DELAY,
+) -> Optional[str]:
+    """
+    Haal het land (2-letter ISO code) op voor een BGA speler-ID via profielpagina scraping.
+    Geeft None terug als het land niet gevonden kan worden.
+    """
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept":     "text/html,application/xhtml+xml,*/*",
+        "Referer":    f"{BGA_BASE}/player?id={player_id}",
+    })
+    session.cookies.update(cookies)
+
+    time.sleep(delay)
+    try:
+        resp = session.get(f"{BGA_BASE}/player?id={player_id}", timeout=15)
+        resp.raise_for_status()
+        html = resp.text
+
+        # BGA toont de vlag als: src="/img/flags/xx.png"
+        patterns = [
+            r'src=["\'][^"\']*?/flags/([a-zA-Z]{2})\.(?:png|svg|gif)["\']',
+            r'data-country=["\']([a-zA-Z]{2})["\']',
+        ]
+        for pat in patterns:
+            m = re.search(pat, html, re.IGNORECASE)
+            if m:
+                code = m.group(1).upper()
+                logger.info(f"  Speler {player_id}: land={code!r}")
+                return code
+
+        logger.warning(f"  Geen land gevonden in HTML voor speler {player_id}")
+    except Exception as e:
+        logger.warning(f"  HTML scraping mislukt voor speler {player_id}: {e}")
+
+    return None
+
+
 # ── Stap 2: spellen ophalen via requests + token ──────────────────────────────
 
 def fetch_player_games(

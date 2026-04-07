@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS players (
     name_nl     TEXT,
     wica_id     TEXT,
     bga_player_id TEXT,
-    country     TEXT DEFAULT 'BE',
+    country     TEXT,
     created_at  TIMESTAMP DEFAULT current_timestamp
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_players_bga ON players(bga_player_id) WHERE bga_player_id IS NOT NULL;

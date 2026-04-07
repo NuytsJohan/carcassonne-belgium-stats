@@ -26,7 +26,7 @@ import duckdb
 
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
-from src.importers.bga_fetcher import get_token_and_cookies, fetch_player_games
+from src.importers.bga_fetcher import get_token_and_cookies, fetch_player_games, fetch_player_country
 from src.importers.bga_importer import import_game, DB_PATH
 
 ROOT    = Path(__file__).parents[2]
@@ -50,8 +50,14 @@ if "fix_arena_state" not in st.session_state:
         "running": False, "done": False, "log": [],
     }
 
+if "country_state" not in st.session_state:
+    st.session_state["country_state"] = {
+        "running": False, "done": False, "updated": 0, "log": [],
+    }
+
 imp = st.session_state["import_state"]
 arena = st.session_state["fix_arena_state"]
+cstate = st.session_state["country_state"]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -216,6 +222,55 @@ def run_fix_arena(email, password, bga_player_id, player_name, s):
         s["done"] = True
 
 
+# ── Landencontrole ───────────────────────────────────────────────────────────
+
+def run_country_check(email, password, s):
+    """s = shared state dict."""
+
+    def log(msg):
+        s["log"].append(msg)
+
+    try:
+        conn = duckdb.connect(DB_FILE)
+        players = conn.execute(
+            "SELECT id, name, bga_player_id FROM players WHERE bga_player_id IS NOT NULL AND country IS NULL ORDER BY name"
+        ).fetchall()
+        conn.close()
+
+        if not players:
+            log("Geen spelers zonder land gevonden.")
+            return
+
+        log(f"🔑 Inloggen op BGA ...")
+        first_pid = int(players[0][2])
+        token, cookies = _run_async(
+            get_token_and_cookies(email, password, first_pid, headless=True)
+        )
+        log(f"✅ Token verkregen — {len(players)} spelers te controleren\n")
+
+        updated = 0
+        for internal_id, name, bga_pid in players:
+            fetched = fetch_player_country(int(bga_pid), token, cookies)
+            country_to_set = fetched if fetched else "UNKNOWN"
+            conn2 = duckdb.connect(DB_FILE)
+            conn2.execute("UPDATE players SET country = ? WHERE id = ?", [country_to_set, internal_id])
+            conn2.close()
+            if fetched:
+                log(f"  ✅ {name}: {fetched}")
+                updated += 1
+            else:
+                log(f"  ⚠️  {name}: niet gevonden → UNKNOWN")
+
+        s["updated"] = updated
+        log(f"\n🏁 Klaar — {updated} landen bijgewerkt")
+
+    except Exception as e:
+        log(f"❌ Fout: {e}\n{traceback.format_exc()}")
+    finally:
+        s["running"] = False
+        s["done"] = True
+
+
 # ── UI ────────────────────────────────────────────────────────────────────────
 
 with st.expander("⚙️ BGA Inloggegevens", expanded=not imp["running"]):
@@ -227,7 +282,7 @@ with st.expander("⚙️ BGA Inloggegevens", expanded=not imp["running"]):
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 
-tab_import, tab_fix_arena = st.tabs(["📥 Import", "🎯 Arena correctie"])
+tab_import, tab_fix_arena, tab_countries = st.tabs(["📥 Import", "🎯 Arena correctie", "🌍 Landen"])
 
 with tab_import:
     st.subheader("Spelers importeren")
@@ -427,3 +482,51 @@ with tab_fix_arena:
             st.success("✅ Arena correctie voltooid")
     else:
         st.info("Geen spelers gevonden in de database.")
+
+# ── Tab 3: Landen controleren ────────────────────────────────────────────────
+
+with tab_countries:
+    st.subheader("Landen controleren")
+    st.caption("Haalt het land op van BGA voor spelers zonder land (country IS NULL). Niet gevonden → UNKNOWN.")
+
+    try:
+        conn_co = duckdb.connect(DB_FILE, read_only=True)
+        df_countries = conn_co.execute(
+            "SELECT name AS Naam, bga_player_id AS \"BGA ID\", country AS Land FROM players WHERE bga_player_id IS NOT NULL ORDER BY name"
+        ).df()
+        null_count = int(conn_co.execute(
+            "SELECT COUNT(*) FROM players WHERE bga_player_id IS NOT NULL AND country IS NULL"
+        ).fetchone()[0])
+        conn_co.close()
+        if not df_countries.empty:
+            st.dataframe(df_countries, hide_index=True, use_container_width=True)
+        st.caption(f"{null_count} speler(s) zonder land")
+    except Exception:
+        null_count = 0
+
+    if not cstate["running"]:
+        if st.button("🔍 Landen ophalen & corrigeren", disabled=imp["running"] or arena["running"] or null_count == 0):
+            if not email or not password:
+                st.error("Vul eerst email en wachtwoord in (bovenaan).")
+            else:
+                st.session_state["bga_email"] = email
+                st.session_state["bga_password"] = password
+                cstate["running"] = True
+                cstate["done"] = False
+                cstate["updated"] = 0
+                cstate["log"] = []
+                threading.Thread(
+                    target=run_country_check,
+                    args=(email, password, cstate),
+                    daemon=True,
+                ).start()
+                st.rerun()
+    else:
+        st.info("⏳ Landencontrole bezig ...")
+        st.button("↻ Ververs", key="refresh_countries", on_click=lambda: None)
+
+    if cstate["log"]:
+        st.code("\n".join(cstate["log"][-60:]), language=None)
+
+    if cstate["done"] and not cstate["running"]:
+        st.success(f"✅ Landencontrole voltooid — {cstate['updated']} landen bijgewerkt")
