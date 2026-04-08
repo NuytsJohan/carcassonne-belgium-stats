@@ -25,6 +25,12 @@ if not DB_PATH.exists():
 
 conn = duckdb.connect(str(DB_PATH), read_only=True)
 
+_last_import = conn.execute(
+    "SELECT MAX(imported_at) FROM import_tracking"
+).fetchone()[0]
+if _last_import:
+    st.caption(f"Laatst geïmporteerd: {_last_import:%d/%m/%Y %H:%M}")
+
 # ── Filters ───────────────────────────────────────────────────────────────────
 
 boardgames = conn.execute("SELECT id, name FROM boardgames ORDER BY name").fetchall()
