@@ -288,6 +288,7 @@ with tab_import:
     st.subheader("Spelers importeren")
 
     only_imported = st.checkbox("Enkel eerder geïmporteerde spelers", value=True, key="only_imported")
+    only_nt_import = st.checkbox("Nationale ploeg", value=False, key="only_nt_import")
 
     try:
         conn_imp = duckdb.connect(DB_FILE, read_only=True)
@@ -303,9 +304,10 @@ with tab_import:
                     ON it.bga_player_id = p.bga_player_id AND it.boardgame_id = 1
                 WHERE p.bga_player_id IS NOT NULL
                   AND it.imported_at IS NOT NULL
+                  AND (? = false OR p.national_team = true)
                 GROUP BY p.bga_player_id, p.name, it.last_ended_at, it.imported_at
                 ORDER BY p.name
-            """).df()
+            """, [only_nt_import]).df()
         else:
             imported_players = conn_imp.execute("""
                 SELECT p.bga_player_id, p.name,
@@ -317,9 +319,10 @@ with tab_import:
                 LEFT JOIN import_tracking it
                     ON it.bga_player_id = p.bga_player_id AND it.boardgame_id = 1
                 WHERE p.bga_player_id IS NOT NULL
+                  AND (? = false OR p.national_team = true)
                 GROUP BY p.bga_player_id, p.name, it.last_ended_at, it.imported_at
                 ORDER BY p.name
-            """).df()
+            """, [only_nt_import]).df()
         conn_imp.close()
     except Exception:
         imported_players = None

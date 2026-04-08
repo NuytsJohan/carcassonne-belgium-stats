@@ -85,6 +85,7 @@ with col_e:
     search = st.text_input("Zoek speler", placeholder="Naam...")
 
 only_elo = st.checkbox("Spelers met ELO", value=True, key="only_elo")
+only_nt = st.checkbox("Nationale ploeg", value=False, key="only_nt")
 
 # ── Statistieken per speler ───────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ df = conn.execute("""
         WHERE gp3.player_id = p.id AND gp3.elo_after IS NOT NULL
           AND g3.boardgame_id = ?
     ))
+      AND (? = false OR p.national_team = true)
     GROUP BY p.id, p.name, p.country, p.bga_player_id, le.elo_after, la.arena_after
     ORDER BY spellen DESC NULLS LAST
 
@@ -180,7 +182,8 @@ df = conn.execute("""
       0 if selected_year == "Alle jaren" else int(selected_year),
       season_start, season_start,
       season_end, season_end,
-      only_elo, selected_bg_id]).df()
+      only_elo, selected_bg_id,
+      only_nt]).df()
 
 conn.close()
 
