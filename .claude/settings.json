@@ -8,10 +8,19 @@
       "Bash(CARCASSONNE_ADMIN=1 streamlit run dashboard/app.py --server.port 8501)",
       "Bash(git rm:*)",
       "Bash(python -c ':*)",
-      "Bash(python -c \"from playwright.async_api import async_playwright; print\\('playwright OK'\\)\")"
+      "Bash(python -c \"from playwright.async_api import async_playwright; print\\('playwright OK'\\)\")",
+      "Bash(git lfs:*)",
+      "Bash(python -c \"from src.importers.bga_fetcher import fetch_player_country; print\\('OK'\\)\")",
+      "Bash(find c:/Users/johan/Documents/Projects/Carcassonne/src/importers -name \"__pycache__\" -type d -exec rm -rf {} +)",
+      "Bash(ls c:/Users/johan/Documents/Projects/Carcassonne/migrations/*.sql)",
+      "Edit(/.claude/skills/analyze/**)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(.venv/Scripts/python -c ':*)",
+      "Bash(.venv/Scripts/python)"
     ],
     "additionalDirectories": [
-      "\\tmp"
+      "\\tmp",
+      "c:\\Users\\johan\\Documents\\Projects\\Carcassonne\\.claude\\skills"
     ]
   }
 }

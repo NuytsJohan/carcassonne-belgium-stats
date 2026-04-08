@@ -8,6 +8,7 @@ public_pages = [
     st.Page("pages/2_players.py", title="Spelers", icon="👤"),
     st.Page("pages/3_player_detail.py", title="Speler detail", icon="📊"),
     st.Page("pages/4_head_to_head.py", title="Head to Head", icon="⚔️"),
+    st.Page("pages/5_national_team.py", title="National Team", icon="🇧🇪"),
 ]
 
 admin_pages = []
