@@ -477,20 +477,22 @@ df_countries = conn.execute(f"""
 """, params).df()
 
 if not df_countries.empty:
-    event_countries = st.dataframe(
+    st.dataframe(
         df_countries,
         use_container_width=True,
         hide_index=True,
-        on_select="rerun",
-        selection_mode="single-row",
         key="nt_countries_table",
     )
 
-    # Handle country row click
-    selected_country = None
-    if event_countries.selection and event_countries.selection.rows:
-        selected_row_c = event_countries.selection.rows[0]
-        selected_country = df_countries.iloc[selected_row_c]["Country"]
+    country_choices = ["— none —"] + df_countries["Country"].tolist()
+    selected_country_choice = st.selectbox(
+        "Show games vs country",
+        country_choices,
+        key="nt_country_pick",
+    )
+    selected_country = (
+        selected_country_choice if selected_country_choice != "— none —" else None
+    )
 
     if selected_country:
         st.subheader(f"All games vs {selected_country}")

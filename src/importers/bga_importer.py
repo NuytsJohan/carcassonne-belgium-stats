@@ -55,9 +55,9 @@ def get_or_create_player(conn: duckdb.DuckDBPyConnection, bga_id: str, name: str
     if row:
         return row[0]
 
-    # Nieuwe speler aanmaken
+    # New player — country left NULL; fetched later via the country-check workflow
     conn.execute(
-        "INSERT INTO players (name, bga_player_id, country) VALUES (?, ?, 'BE')",
+        "INSERT INTO players (name, bga_player_id) VALUES (?, ?)",
         [name, bga_id],
     )
     new_id = conn.execute(
