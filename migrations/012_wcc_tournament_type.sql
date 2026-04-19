@@ -1,0 +1,8 @@
+-- Migration 012: add WCC tournament type + WC-specific fields.
+-- Requires DB rebuild via scripts/migrate_012_wcc_type.py (DuckDB cannot ALTER CHECK).
+-- Backup: data/carcassonne.duckdb.pre_wcc.bak
+--
+-- Changes:
+-- 1. tournaments.type CHECK extended with 'WCC' (Carcassonne World Championship).
+-- 2. tournaments: added column participants_count INTEGER.
+-- 3. tournament_participants: added column note TEXT.

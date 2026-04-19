@@ -13,7 +13,13 @@ data/bga_session/
 # Database bestanden (allow carcassonne.duckdb for Streamlit Cloud deploy)
 *.db
 *.duckdb
+*.duckdb.bak
+*.duckdb.*.bak
+data/*.bak
 !data/carcassonne.duckdb
+
+# Claude Code transient state
+.claude/scheduled_tasks.lock
 
 # OS
 .DS_Store
