@@ -46,6 +46,10 @@ NATIONS_OFFICIAL_LOSS = 0.0
 NATIONS_FRIENDLY_WIN = 2.0
 NATIONS_FRIENDLY_LOSS = 0.0
 
+# Knockout-stage win bonuses (group stage uses the normal NATIONS_OFFICIAL_WIN).
+NATIONS_ETCOC_PLAYOFF_WIN = 5.0
+NATIONS_WTCOC_PLAYOFF_WIN = 6.0
+
 # Chess-style display scaling: elo = ELO_FLOOR + total_score * ELO_SCALE
 ELO_FLOOR = 1500
 ELO_SCALE = 1.0
@@ -298,6 +302,17 @@ def compute_wcc_bonus(c: duckdb.DuckDBPyConnection, be_ids: set[int]) -> list[tu
     return events
 
 
+def is_knockout_stage(stage: str | None) -> bool:
+    """Knockout (playoff) stages are anything other than group-stage labels
+    like 'Match 1' or 'Gr.Stage 2' (e.g. '1/8 final', '1/2 final', 'final',
+    '3rd/4th place')."""
+    if not stage:
+        return False
+    s = stage.strip().lower()
+    return not (s.startswith("match") or s.startswith("gr.stage")
+                or s.startswith("group"))
+
+
 def compute_nations_bonus(c: duckdb.DuckDBPyConnection, be_ids: set[int]) -> list[tuple]:
     rows = c.execute(
         """
@@ -305,6 +320,7 @@ def compute_nations_bonus(c: duckdb.DuckDBPyConnection, be_ids: set[int]) -> lis
                nm.player_id,
                nm.result,
                ncd.date_played,
+               ncd.stage,
                t.id,
                t.year,
                t.name,
@@ -316,7 +332,7 @@ def compute_nations_bonus(c: duckdb.DuckDBPyConnection, be_ids: set[int]) -> lis
     ).fetchall()
 
     events = []
-    for match_id, pid, result, date_played, tid, year, name, ttype in rows:
+    for match_id, pid, result, date_played, stage, tid, year, name, ttype in rows:
         if pid not in be_ids:
             continue
         is_friendly = (ttype == "FRIENDLIES")
@@ -326,6 +342,11 @@ def compute_nations_bonus(c: duckdb.DuckDBPyConnection, be_ids: set[int]) -> lis
         else:
             source = "nations_official"
             win_pts, loss_pts = NATIONS_OFFICIAL_WIN, NATIONS_OFFICIAL_LOSS
+            if is_knockout_stage(stage):
+                if ttype == "WTCOC":
+                    win_pts = NATIONS_WTCOC_PLAYOFF_WIN
+                elif ttype == "ETCOC":
+                    win_pts = NATIONS_ETCOC_PLAYOFF_WIN
 
         if result == "W":
             raw = win_pts
@@ -336,7 +357,8 @@ def compute_nations_bonus(c: duckdb.DuckDBPyConnection, be_ids: set[int]) -> lis
 
         match_year = year if year else (date_played.year if date_played else None)
         d = decay(match_year)
-        desc = f"{name} — {result} vs opp"
+        stage_str = f" [{stage}]" if stage else ""
+        desc = f"{name}{stage_str} — {result} vs opp"
         events.append((pid, source, date_played, match_year, tid, desc, raw, d, raw * d))
     return events
 
