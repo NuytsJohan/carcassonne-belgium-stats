@@ -14,6 +14,7 @@ import os
 import sys
 import threading
 import traceback
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import streamlit as st
@@ -27,7 +28,12 @@ import duckdb
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
 from src.importers.bga_fetcher import get_token_and_cookies, fetch_player_games, fetch_player_country
-from src.importers.bga_importer import import_game, DB_PATH
+from src.importers.bga_importer import (
+    import_game,
+    _backfill_importing_player_elo,
+    _parse_importing_player_elo,
+    DB_PATH,
+)
 
 ROOT    = Path(__file__).parents[2]
 DB_FILE = str(ROOT / DB_PATH)
@@ -55,9 +61,15 @@ if "country_state" not in st.session_state:
         "running": False, "done": False, "updated": 0, "log": [],
     }
 
+if "elo_backfill_state" not in st.session_state:
+    st.session_state["elo_backfill_state"] = {
+        "running": False, "done": False, "updated": 0, "log": [],
+    }
+
 imp = st.session_state["import_state"]
 arena = st.session_state["fix_arena_state"]
 cstate = st.session_state["country_state"]
+elostate = st.session_state["elo_backfill_state"]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -100,11 +112,36 @@ def run_import(email, password, player_ids, s):
         total_new = 0
         for pid in player_ids:
             bga_pid_str = str(pid)
+            # Normale cutoff = laatste game waarin de speler voorkomt (incrementeel).
             track_row = conn.execute("""
                 SELECT last_ended_at FROM import_tracking
                 WHERE bga_player_id = ? AND boardgame_id = 1
             """, [bga_pid_str]).fetchone()
-            since = track_row[0] if track_row and track_row[0] else None
+            tracked_since = track_row[0] if track_row and track_row[0] else None
+
+            # Maar als er games zijn met ontbrekende elo voor deze speler (binnengekomen
+            # via een tegenstander, daarom NULL), moeten we ver genoeg terug fetchen om
+            # ze opnieuw te bezoeken zodat import_game de missende velden backfilt.
+            # Daarom: ga terug tot de OUDSTE game zonder elo (met echte table_id) van
+            # het laatste jaar. Oude residu-records (placeholders zonder table_id)
+            # negeren we.
+            gap_row = conn.execute("""
+                SELECT MIN(COALESCE(g.ended_at, g.played_at))
+                FROM game_players gp
+                JOIN games g ON g.id = gp.game_id
+                JOIN players p ON p.id = gp.player_id
+                WHERE p.bga_player_id = ?
+                  AND gp.elo_after IS NULL
+                  AND g.bga_table_id IS NOT NULL
+                  AND g.unranked = false
+                  AND COALESCE(g.ended_at, g.played_at) >= ?
+            """, [bga_pid_str, datetime.now() - timedelta(days=365)]).fetchone()
+            gap_since = gap_row[0] if gap_row and gap_row[0] else None
+
+            if tracked_since and gap_since:
+                since = min(tracked_since, gap_since)
+            else:
+                since = gap_since or tracked_since
 
             if since:
                 log(f"👤 Fetching player {pid} (since {since.date()}) ...")
@@ -222,6 +259,70 @@ def run_fix_arena(email, password, bga_player_id, player_name, s):
         s["done"] = True
 
 
+# ── ELO backfill per speler ───────────────────────────────────────────────────
+
+def run_elo_backfill(email, password, players, s):
+    """Backfill ontbrekende elo_after/elo_win/elo_penalty per speler.
+
+    players = lijst van (bga_player_id, name). Per speler fetchen we enkel het
+    laatste jaar aan games — daar zitten de gaten die door het import-probleem
+    ontstonden. Oude residu-gaten (placeholder records uit 2022-2024 zonder echte
+    table_id) worden zo genegeerd. De ontbrekende velden worden ingevuld op die
+    spelers eigen game_players rij.
+    s = shared state dict (niet st.session_state).
+    """
+
+    def log(msg):
+        s["log"].append(msg)
+
+    since = datetime.now() - timedelta(days=365)
+
+    try:
+        log("🔑 Logging into BGA ...")
+        token, cookies = _run_async(
+            get_token_and_cookies(email, password, int(players[0][0]), headless=True)
+        )
+        log(f"✅ Token: {token[:8]}... obtained")
+
+        conn = duckdb.connect(DB_FILE)
+        total_updated = 0
+        for bga_pid, name in players:
+            bga_pid_str = str(bga_pid)
+            log(f"👤 {name} ({bga_pid}) — fetching since {since.date()} ...")
+            try:
+                games = fetch_player_games(int(bga_pid), token, cookies, since=since)
+                log(f"   📊 {len(games)} games fetched")
+                updated = 0
+                for game in games:
+                    table_id = str(game.get("table_id", ""))
+                    if not table_id:
+                        continue
+                    existing = conn.execute(
+                        "SELECT id FROM games WHERE bga_table_id = ?", [table_id]
+                    ).fetchone()
+                    if not existing:
+                        continue
+                    if _backfill_importing_player_elo(
+                        conn, existing[0], bga_pid_str,
+                        _parse_importing_player_elo(game),
+                    ):
+                        updated += 1
+                total_updated += updated
+                log(f"   ✅ {updated} games backfilled")
+            except Exception as e:
+                log(f"   ❌ Error for {name}: {e}")
+
+        conn.close()
+        s["updated"] = total_updated
+        log(f"🏁 Done — {total_updated} games backfilled across {len(players)} player(s)")
+
+    except Exception as e:
+        log(f"❌ Error: {e}\n{traceback.format_exc()}")
+    finally:
+        s["running"] = False
+        s["done"] = True
+
+
 # ── Country check ────────────────────────────────────────────────────────────
 
 def run_country_check(email, password, s):
@@ -282,7 +383,9 @@ with st.expander("⚙️ BGA Credentials", expanded=not imp["running"]):
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 
-tab_import, tab_fix_arena, tab_countries = st.tabs(["📥 Import", "🎯 Arena correction", "🌍 Countries"])
+tab_import, tab_fix_arena, tab_elo, tab_countries = st.tabs(
+    ["📥 Import", "🎯 Arena correction", "📈 ELO backfill", "🌍 Countries"]
+)
 
 with tab_import:
     st.subheader("Import players")
@@ -486,7 +589,100 @@ with tab_fix_arena:
     else:
         st.info("No players found in the database.")
 
-# ── Tab 3: Country check ─────────────────────────────────────────────────────
+# ── Tab 3: ELO backfill ──────────────────────────────────────────────────────
+
+with tab_elo:
+    st.subheader("Backfill missing ELO per player")
+    st.caption(
+        "Re-fetches each Belgian player from the most recent game that still has ELO "
+        "(where the gap starts) and fills in missing elo_after/elo_win for games that "
+        "were imported via an opponent (so the player's own ELO was NULL)."
+    )
+
+    try:
+        conn_elo = duckdb.connect(DB_FILE, read_only=True)
+        elo_players = conn_elo.execute("""
+            SELECT p.bga_player_id, p.name,
+                   COUNT(gp.id) AS games,
+                   SUM(CASE WHEN gp.elo_after IS NULL THEN 1 ELSE 0 END) AS missing_elo
+            FROM players p
+            JOIN game_players gp ON gp.player_id = p.id
+            JOIN games g ON g.id = gp.game_id AND g.unranked = false
+            WHERE p.bga_player_id IS NOT NULL
+              AND p.country = 'BE'
+              AND EXISTS (
+                  SELECT 1 FROM import_tracking it
+                  WHERE it.bga_player_id = p.bga_player_id AND it.boardgame_id = 1
+                    AND it.imported_at IS NOT NULL
+              )
+            GROUP BY p.bga_player_id, p.name
+            HAVING SUM(CASE WHEN gp.elo_after IS NULL THEN 1 ELSE 0 END) > 0
+            ORDER BY missing_elo DESC
+        """).df()
+        conn_elo.close()
+    except Exception:
+        elo_players = None
+
+    if elo_players is not None and not elo_players.empty:
+        elo_select_all = st.checkbox("Select all", value=False, key="elo_select_all")
+
+        elo_edit_df = elo_players[["name", "bga_player_id", "games", "missing_elo"]].copy()
+        elo_edit_df.insert(0, "✔", elo_select_all)
+        elo_edit_df = elo_edit_df.rename(columns={
+            "name":          "Name",
+            "bga_player_id": "BGA ID",
+            "games":         "Games",
+            "missing_elo":   "Missing ELO",
+        })
+
+        elo_result = st.data_editor(
+            elo_edit_df,
+            width="stretch",
+            hide_index=True,
+            disabled=["Name", "BGA ID", "Games", "Missing ELO"],
+            key="elo_players_editor",
+        )
+
+        elo_selected = [
+            (int(elo_players.iloc[i]["bga_player_id"]), str(elo_players.iloc[i]["name"]))
+            for i, checked in enumerate(elo_result["✔"])
+            if checked
+        ]
+        st.caption(f"{len(elo_selected)} player(s) selected")
+
+        if not elostate["running"]:
+            if st.button("▶ Backfill ELO", type="primary", key="elo_backfill_btn"):
+                if not elo_selected:
+                    st.error("Select at least one player.")
+                elif not email or not password:
+                    st.error("Fill in email and password first (top of page).")
+                else:
+                    st.session_state["bga_email"] = email
+                    st.session_state["bga_password"] = password
+                    elostate["running"] = True
+                    elostate["done"] = False
+                    elostate["updated"] = 0
+                    elostate["log"] = []
+                    threading.Thread(
+                        target=run_elo_backfill,
+                        args=(email, password, elo_selected, elostate),
+                        daemon=True,
+                    ).start()
+                    st.rerun()
+        else:
+            st.info("⏳ ELO backfill running — page refreshes automatically ...")
+            st.button("↻ Refresh status", on_click=lambda: None, key="elo_backfill_refresh")
+
+        if elostate["log"]:
+            st.code("\n".join(elostate["log"][-40:]), language=None)
+
+        if elostate["done"] and not elostate["running"]:
+            st.success(f"✅ ELO backfill complete — {elostate['updated']} games backfilled")
+    else:
+        st.info("No players with missing ELO found.")
+
+
+# ── Tab 4: Country check ─────────────────────────────────────────────────────
 
 with tab_countries:
     st.subheader("Check countries")
