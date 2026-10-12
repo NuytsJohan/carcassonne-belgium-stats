@@ -15,8 +15,9 @@ BGA_TABLE_URL = "https://boardgamearena.com/table?table="
 def games_won_lost(row, max_games: int = 5) -> str | None:
     """Count per-game W/L from score_be_i / score_opp_i columns.
 
-    Tied games (same score) count as a loss for Belgium ('lost draw' tiebreak),
-    matching how `result` is recorded for nations_matches.
+    Tied games (same score) are decided by the BGA rank (the non-starting
+    player wins the tiebreak); without ranks they count as a loss for
+    Belgium ('lost draw'), matching how `result` is recorded for nations_matches.
     """
     won = lost = 0
     for i in range(1, max_games + 1):
@@ -24,7 +25,11 @@ def games_won_lost(row, max_games: int = 5) -> str | None:
         opp = row.get(f"score_opp_{i}")
         if pd.isna(be) or pd.isna(opp):
             continue
-        if be > opp:
+        rank_be = row.get(f"rank_be_{i}")
+        rank_opp = row.get(f"rank_opp_{i}")
+        won_tie = (be == opp and pd.notna(rank_be) and pd.notna(rank_opp)
+                   and rank_be < rank_opp)
+        if be > opp or won_tie:
             won += 1
         else:
             lost += 1
@@ -198,15 +203,15 @@ if detail_player_id:
             g4.bga_table_id AS bga_id_4,
             g5.bga_table_id AS bga_id_5,
             CAST(gp1_be.score AS INTEGER) AS score_be_1,
-            CAST(gp1_opp.score AS INTEGER) AS score_opp_1,
+            CAST(gp1_opp.score AS INTEGER) AS score_opp_1, gp1_be.rank AS rank_be_1, gp1_opp.rank AS rank_opp_1,
             CAST(gp2_be.score AS INTEGER) AS score_be_2,
-            CAST(gp2_opp.score AS INTEGER) AS score_opp_2,
+            CAST(gp2_opp.score AS INTEGER) AS score_opp_2, gp2_be.rank AS rank_be_2, gp2_opp.rank AS rank_opp_2,
             CAST(gp3_be.score AS INTEGER) AS score_be_3,
-            CAST(gp3_opp.score AS INTEGER) AS score_opp_3,
+            CAST(gp3_opp.score AS INTEGER) AS score_opp_3, gp3_be.rank AS rank_be_3, gp3_opp.rank AS rank_opp_3,
             CAST(gp4_be.score AS INTEGER) AS score_be_4,
-            CAST(gp4_opp.score AS INTEGER) AS score_opp_4,
+            CAST(gp4_opp.score AS INTEGER) AS score_opp_4, gp4_be.rank AS rank_be_4, gp4_opp.rank AS rank_opp_4,
             CAST(gp5_be.score AS INTEGER) AS score_be_5,
-            CAST(gp5_opp.score AS INTEGER) AS score_opp_5
+            CAST(gp5_opp.score AS INTEGER) AS score_opp_5, gp5_be.rank AS rank_be_5, gp5_opp.rank AS rank_opp_5
         FROM nations_matches nm
         JOIN nations_competition_duels d ON nm.duel_id = d.id
         JOIN tournaments t ON d.tournament_id = t.id
@@ -363,15 +368,15 @@ if not df_duels.empty:
                 g4.bga_table_id AS bga_id_4,
                 g5.bga_table_id AS bga_id_5,
                 CAST(gp1_be.score AS INTEGER) AS score_be_1,
-                CAST(gp1_opp.score AS INTEGER) AS score_opp_1,
+                CAST(gp1_opp.score AS INTEGER) AS score_opp_1, gp1_be.rank AS rank_be_1, gp1_opp.rank AS rank_opp_1,
                 CAST(gp2_be.score AS INTEGER) AS score_be_2,
-                CAST(gp2_opp.score AS INTEGER) AS score_opp_2,
+                CAST(gp2_opp.score AS INTEGER) AS score_opp_2, gp2_be.rank AS rank_be_2, gp2_opp.rank AS rank_opp_2,
                 CAST(gp3_be.score AS INTEGER) AS score_be_3,
-                CAST(gp3_opp.score AS INTEGER) AS score_opp_3,
+                CAST(gp3_opp.score AS INTEGER) AS score_opp_3, gp3_be.rank AS rank_be_3, gp3_opp.rank AS rank_opp_3,
                 CAST(gp4_be.score AS INTEGER) AS score_be_4,
-                CAST(gp4_opp.score AS INTEGER) AS score_opp_4,
+                CAST(gp4_opp.score AS INTEGER) AS score_opp_4, gp4_be.rank AS rank_be_4, gp4_opp.rank AS rank_opp_4,
                 CAST(gp5_be.score AS INTEGER) AS score_be_5,
-                CAST(gp5_opp.score AS INTEGER) AS score_opp_5
+                CAST(gp5_opp.score AS INTEGER) AS score_opp_5, gp5_be.rank AS rank_be_5, gp5_opp.rank AS rank_opp_5
             FROM nations_matches nm
             JOIN players p ON nm.player_id = p.id
             JOIN players op ON nm.opponent_player_id = op.id
@@ -551,15 +556,15 @@ if not df_countries.empty:
                 g4.bga_table_id AS bga_id_4,
                 g5.bga_table_id AS bga_id_5,
                 CAST(gp1_be.score AS INTEGER) AS score_be_1,
-                CAST(gp1_opp.score AS INTEGER) AS score_opp_1,
+                CAST(gp1_opp.score AS INTEGER) AS score_opp_1, gp1_be.rank AS rank_be_1, gp1_opp.rank AS rank_opp_1,
                 CAST(gp2_be.score AS INTEGER) AS score_be_2,
-                CAST(gp2_opp.score AS INTEGER) AS score_opp_2,
+                CAST(gp2_opp.score AS INTEGER) AS score_opp_2, gp2_be.rank AS rank_be_2, gp2_opp.rank AS rank_opp_2,
                 CAST(gp3_be.score AS INTEGER) AS score_be_3,
-                CAST(gp3_opp.score AS INTEGER) AS score_opp_3,
+                CAST(gp3_opp.score AS INTEGER) AS score_opp_3, gp3_be.rank AS rank_be_3, gp3_opp.rank AS rank_opp_3,
                 CAST(gp4_be.score AS INTEGER) AS score_be_4,
-                CAST(gp4_opp.score AS INTEGER) AS score_opp_4,
+                CAST(gp4_opp.score AS INTEGER) AS score_opp_4, gp4_be.rank AS rank_be_4, gp4_opp.rank AS rank_opp_4,
                 CAST(gp5_be.score AS INTEGER) AS score_be_5,
-                CAST(gp5_opp.score AS INTEGER) AS score_opp_5
+                CAST(gp5_opp.score AS INTEGER) AS score_opp_5, gp5_be.rank AS rank_be_5, gp5_opp.rank AS rank_opp_5
             FROM nations_matches nm
             JOIN nations_competition_duels d ON nm.duel_id = d.id
             JOIN tournaments t ON d.tournament_id = t.id
