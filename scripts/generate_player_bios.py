@@ -188,8 +188,8 @@ def honours_rows(results: list[dict]) -> list[dict]:
                      "result": f"{res} ({note})" if note else res})
     for r in by_type["BCOC"]:
         if r["final_rank"] <= 4 or r is best_bcoc:
-            res = "**Winner**" if r["final_rank"] == 1 else ordinal(r["final_rank"])
-            rows.append({"year": r["year"], "tournament": "Belgian Carcassonne Online Cup", "result": res})
+            rows.append({"year": r["year"], "tournament": "Belgian Carcassonne Online Championship",
+                         "result": bk_result(r["final_rank"])})
     for r in by_type["BCL"]:
         m = re.match(r"BCL (\d{4}) (\w+) (ML|GL|SL|BL)", r["name"])
         if not m:
@@ -222,6 +222,7 @@ def render(p: dict, results: list[dict], nations: list[dict], rivals: list[dict]
         by_type[r["type"]].append(r)
     bk, wcc, bcoc = by_type["BCLC"], by_type["WCC"], by_type["BCOC"]
     titles = [r["year"] for r in bk if r["final_rank"] == 1]
+    online_titles = [r["year"] for r in bcoc if r["final_rank"] == 1]
     runner_ups = [r["year"] for r in bk if r["final_rank"] == 2]
 
     n_w = sum(m["result"] == "W" for m in nations)
@@ -235,10 +236,20 @@ def render(p: dict, results: list[dict], nations: list[dict], rivals: list[dict]
 
     # Bio
     intro = f"{full}, known online as **{nick}**," if full else f"**{nick}**"
-    if titles:
-        years = join_words([str(y) for y in titles])
-        head = (f"is a **{len(titles)}-time Belgian champion** ({years})" if len(titles) > 1
-                else f"is a **Belgian champion** ({years})")
+    def champion(kind: str, years: list[int]) -> str:
+        n = f"{len(years)}-time " if len(years) > 1 else ""
+        return f"**{n}{kind} champion** ({join_words([str(y) for y in years])})"
+
+    rank_sep = " and"
+    if titles or online_titles:
+        won = []
+        if titles:
+            won.append(champion("Belgian", titles))
+        if online_titles:
+            won.append(champion("Belgian online", online_titles))
+        head = "is a " + " and ".join(won)
+        if len(won) > 1:
+            rank_sep = ", and"
     elif runner_ups:
         head = f"was **runner-up at the Belgian Championship** in {join_words([str(y) for y in runner_ups])}"
     elif bk:
@@ -247,7 +258,7 @@ def render(p: dict, results: list[dict], nations: list[dict], rivals: list[dict]
     else:
         head = "plays for the Belgian national team"
     p1 = f"{intro} {head}"
-    p1 += f" and ranks **{ordinal(p['rank'])} in the Belgian ranking**." if p["rank"] else "."
+    p1 += f"{rank_sep} ranks **{ordinal(p['rank'])} in the Belgian ranking**." if p["rank"] else "."
     if bk:
         p1 += (f" {nick} has played {len(bk)} editions of the live Belgian Championship"
                f" since {min(r['year'] for r in bk)}.")
@@ -277,11 +288,14 @@ def render(p: dict, results: list[dict], nations: list[dict], rivals: list[dict]
         bits = []
         if titles:
             bits.append(f"{len(titles)} Belgian title{'s' if len(titles) > 1 else ''}")
+        if online_titles:
+            bits.append(f"{len(online_titles)} online title{'s' if len(online_titles) > 1 else ''}")
         if runner_ups:
             bits.append(f"{len(runner_ups)} runner-up finish{'es' if len(runner_ups) > 1 else ''}")
         if wcc:
             bits.append(f"{len(wcc)} World Championship appearance{'s' if len(wcc) > 1 else ''}")
-        lead = (f"{join_words(bits)} stand out in {nick}'s record." if bits
+        verb = "stands" if len(bits) == 1 and bits[0].startswith("1 ") else "stand"
+        lead = (f"{join_words(bits)} {verb} out in {nick}'s record." if bits
                 else f"Best tournament results for {nick}.")
         lines += ["## Honours", "", lead, "", "| Year | Tournament | Result |", "| --- | --- | --- |"]
         lines += [f"| {r['year']} | {r['tournament']} | {r['result']} |" for r in hon]
@@ -290,7 +304,9 @@ def render(p: dict, results: list[dict], nations: list[dict], rivals: list[dict]
             tail.append(f"{len(bk)} edition{'s' if len(bk) > 1 else ''} of the live Belgian Championship")
         if bcoc:
             b = min(bcoc, key=lambda r: (r["final_rank"], -r["year"]))
-            tail.append(f"{len(bcoc)} edition{'s' if len(bcoc) > 1 else ''} of the online cup (best: {ordinal(b['final_rank'])} in {b['year']})")
+            best_txt = "champion" if b["final_rank"] == 1 else ordinal(b["final_rank"])
+            tail.append(f"{len(bcoc)} edition{'s' if len(bcoc) > 1 else ''} of the online championship "
+                        f"(best: {best_txt} in {b['year']})")
         if tail:
             lines += ["", f"Played: {join_words(tail)}."]
         lines.append("")
@@ -372,7 +388,7 @@ def render(p: dict, results: list[dict], nations: list[dict], rivals: list[dict]
         lines.append("")
 
     asof = f"{p['computed_at'].day} {p['computed_at']:%B %Y}" if p["computed_at"] else "the last ranking run"
-    lines.append(f"*Source: Carcassonne Belgium statistics database (Belgian Championship, online cup, "
+    lines.append(f"*Source: Carcassonne Belgium statistics database (Belgian Championship, online championship, "
                  f"league, World Championship and international matches), rankings computed on {asof}. "
                  f"Generated by scripts/generate_player_bios.py.*")
     return "\n".join(lines) + "\n"

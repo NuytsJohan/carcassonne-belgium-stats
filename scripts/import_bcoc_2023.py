@@ -165,7 +165,7 @@ def main():
         ON CONFLICT DO NOTHING
     """, [TOURNAMENT_ID, "BCOC 2023", "BCOC", 2023, "2023",
           "2022-12-02", "2023-01-29",
-          "Belgian Championship of Carcassonne Online 2023. Groups Dec 2-30 2022, Knockouts Jan 2-29 2023."])
+          "Belgian Carcassonne Online Championship 2023. Groups Dec 2-30 2022, Knockouts Jan 2-29 2023."])
     print("Tournament BCOC 2023 created (id=11).")
 
     # Ensure alias for jorenderidder ff

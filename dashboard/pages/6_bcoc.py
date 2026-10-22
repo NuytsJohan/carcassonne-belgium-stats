@@ -1,4 +1,4 @@
-"""BCOC (Belgian Championship of Carcassonne Online) tournament overview."""
+"""BCOC (Belgian Carcassonne Online Championship) tournament overview."""
 from pathlib import Path
 
 import duckdb

@@ -7,7 +7,7 @@ Verzameling en visualisatie van statistieken over Belgische spelers van het bord
 | Bron | Beschrijving | Formaat |
 |------|-------------|---------|
 | **BK** | Live Belgisch Kampioenschap | Excel / PDF |
-| **BCOC** | Belgian Carcassonne Online Cup | TBD |
+| **BCOC** | Belgian Carcassonne Online Championship | TBD |
 | **BCL** | Belgian Carcassonne League | TBD |
 | **Nations** | Nationale ploeg competities | TBD |
 

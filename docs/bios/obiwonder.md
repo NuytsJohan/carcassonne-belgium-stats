@@ -22,7 +22,7 @@ Four Belgian titles, two runner-up finishes and a World Championship top 6 form 
 | 2026 | Belgian Championship (live) | **Champion** |
 | 2026 | BCL Spring (Master League) | Runner-up (group winner, lost the final) |
 | 2025 | Belgian Championship (live) | Runner-up |
-| 2022 | Belgian Carcassonne Online Cup | 4th |
+| 2022 | Belgian Carcassonne Online Championship | 4th |
 | 2021 | World Championship | 6th of 42 |
 | 2017 | Belgian Championship (live) | **Champion** (son Wolf runner-up) |
 | 2017 | World Championship | 7th of 38 (quarter-final) |
@@ -32,7 +32,7 @@ Four Belgian titles, two runner-up finishes and a World Championship top 6 form 
 | 2006 | Belgian Championship (live) | **Champion** (first edition) |
 | 2006 | World Championship | 9th of 20 (Belgium's first World Championship) |
 
-He has played 17 editions of the live Belgian Championship and 5 editions of the online cup (best: 4th in 2022).
+He has played 17 editions of the live Belgian Championship and 5 editions of the online championship (best: 4th in 2022).
 
 ## Key figures
 
@@ -82,4 +82,4 @@ He holds his own against Belgium's best: he has won all 6 of his matches against
 
 Of the opponents he has faced 20 times or more, only JinaJina has a clearly winning record against him.
 
-*Source: Carcassonne Belgium statistics database (Belgian Championship, online cup, league, World Championship and international matches), rankings computed on 12 October 2026. The 2026 Belgian title, the 2026 World Championship and the last ETCOC 2026 match were added by hand.*
+*Source: Carcassonne Belgium statistics database (Belgian Championship, online championship, league, World Championship and international matches), rankings computed on 12 October 2026. The 2026 Belgian title, the 2026 World Championship and the last ETCOC 2026 match were added by hand.*

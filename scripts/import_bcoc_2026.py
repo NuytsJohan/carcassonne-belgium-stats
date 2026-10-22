@@ -123,7 +123,7 @@ def main():
         ON CONFLICT DO NOTHING
     """, [TOURNAMENT_ID, "BCOC 2026", "BCOC", 2026, "2026",
           "2025-12-01", "2026-02-01",
-          "Belgian Championship of Carcassonne Online 2026. Groups Dec 1-30 2025, Knockouts Jan 1 - Feb 1 2026."])
+          "Belgian Carcassonne Online Championship 2026. Groups Dec 1-30 2025, Knockouts Jan 1 - Feb 1 2026."])
     print("Tournament BCOC 2026 created (id=14).")
 
     # Create new players if needed

@@ -173,7 +173,7 @@ def main():
         ON CONFLICT DO NOTHING
     """, [TOURNAMENT_ID, "BCOC 2022", "BCOC", 2022, "2022",
           "2022-02-01", "2022-03-06",
-          "Belgian Championship of Carcassonne Online 2022. Groups Feb 1-14, Knockouts Feb 15 - Mar 6."])
+          "Belgian Carcassonne Online Championship 2022. Groups Feb 1-14, Knockouts Feb 15 - Mar 6."])
     print("Tournament BCOC 2022 created (id=10).")
 
     # Ensure 'Franky is amazing' alias exists for 'Learn to fly' (id=8)
