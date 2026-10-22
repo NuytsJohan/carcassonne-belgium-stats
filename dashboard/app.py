@@ -5,6 +5,7 @@ import streamlit as st
 # ── Page definitions ─────────────────────────────────────────────────────────
 
 public_pages = [
+    st.Page("pages/11_ranking.py", title="Ranking", icon="🏅"),
     st.Page("pages/2_players.py", title="Players", icon="👤"),
     st.Page("pages/3_player_detail.py", title="Player detail", icon="📊"),
     st.Page("pages/4_head_to_head.py", title="Head to Head", icon="⚔️"),
@@ -14,7 +15,6 @@ public_pages = [
     st.Page("pages/8_bclc.py", title="BCLC", icon="🎯"),
     st.Page("pages/10_wcc.py", title="WCC", icon="🌍"),
     st.Page("pages/7_country_duel.py", title="Country Duel", icon="🆚"),
-    st.Page("pages/11_ranking.py", title="Ranking", icon="🏅"),
 ]
 
 admin_pages = []
