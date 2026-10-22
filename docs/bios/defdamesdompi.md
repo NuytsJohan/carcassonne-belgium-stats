@@ -1,5 +1,7 @@
 # Dominic Reberez (Defdamesdompi) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Dominic Reberez, known online as **Defdamesdompi**, finished 3rd at the Belgian Championship in 2022 as best result and ranks **12th in the Belgian ranking**. Defdamesdompi has played 5 editions of the live Belgian Championship since 2006.

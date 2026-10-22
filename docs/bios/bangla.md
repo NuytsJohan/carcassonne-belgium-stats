@@ -1,5 +1,7 @@
 # Tony Reynolds (Bangla) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Tony Reynolds, known online as **Bangla**, plays for the Belgian national team and ranks **17th in the Belgian ranking**.
@@ -47,8 +49,8 @@ Bangla's most frequent opponent is obiwonder (14 matches, 4–10–0). Against t
 | N2xU (Nico Wellemans) | 13 | 2–9–2 |
 | JinaJina (Nicolas Victor) | 11 | 6–5–0 |
 | mobidic (Maud Quaniers) | 10 | 1–9–0 |
-| MarathonMeeple (Joren De Ridder) | 9 | 5–4–0 |
 | Jimmylori | 9 | 5–4–0 |
+| MarathonMeeple (Joren De Ridder) | 9 | 5–4–0 |
 | Learn to fly (Michiel Meire) | 9 | 3–5–1 |
 | Defdamesdompi (Dominic Reberez) | 9 | 2–6–1 |
 

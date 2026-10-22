@@ -2,6 +2,8 @@
 <!-- Hand-maintained: includes the 2026 Belgian title, the 2026 World Championship and the last ETCOC 2026 match, which are not in the database yet. scripts/generate_player_bios.py skips this file. -->
 # Johan Nuyts (obiwonder) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Johan Nuyts, known online as **obiwonder**, is the **reigning Belgian champion** and has now won the Belgian Carcassonne Championship four times (2006, 2007, 2017 and 2026). He has been part of the Belgian elite for twenty years: he won the very first Belgian championship in 2006 and reclaimed the title in 2026, a year after finishing runner-up.

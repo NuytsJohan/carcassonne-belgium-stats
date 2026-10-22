@@ -1,5 +1,7 @@
 # Karl Verheyden (71Knives) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Karl Verheyden, known online as **71Knives**, is a **Belgian champion** (2023) and ranks **4th in the Belgian ranking**. 71Knives has played 15 editions of the live Belgian Championship since 2007.

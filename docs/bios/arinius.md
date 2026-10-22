@@ -1,5 +1,7 @@
 # Yannick Haenebalcke (arinius) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Yannick Haenebalcke, known online as **arinius**, plays for the Belgian national team and ranks **27th in the Belgian ranking**.

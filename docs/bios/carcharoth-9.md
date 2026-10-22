@@ -1,5 +1,7 @@
 # Wannes Vansina (Carcharoth 9) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Wannes Vansina, known online as **Carcharoth 9**, is a **Belgian champion** (2016) and ranks **7th in the Belgian ranking**. Carcharoth 9 has played 13 editions of the live Belgian Championship since 2007.

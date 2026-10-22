@@ -1,5 +1,7 @@
 # Wannes Van Baekel (vanbaekel-) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Wannes Van Baekel, known online as **vanbaekel-**, plays for the Belgian national team and ranks **29th in the Belgian ranking**.

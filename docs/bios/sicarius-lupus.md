@@ -1,5 +1,7 @@
 # Wolf Nuyts (Sicarius Lupus) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Wolf Nuyts, known online as **Sicarius Lupus**, was **runner-up at the Belgian Championship** in 2017 and ranks **13th in the Belgian ranking**. Sicarius Lupus has played 10 editions of the live Belgian Championship since 2008.

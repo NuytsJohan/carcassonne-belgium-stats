@@ -1,5 +1,7 @@
 # Bids — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 **Bids** plays for the Belgian national team and ranks **129th in the Belgian ranking**.

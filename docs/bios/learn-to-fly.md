@@ -1,5 +1,7 @@
 # Michiel Meire (Learn to fly) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Michiel Meire, known online as **Learn to fly**, finished 23rd at the Belgian Championship in 2025 as best result and ranks **11th in the Belgian ranking**. Learn to fly has played 2 editions of the live Belgian Championship since 2024.

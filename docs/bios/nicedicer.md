@@ -1,5 +1,7 @@
 # Tom De Smedt (Nicedicer) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Tom De Smedt, known online as **Nicedicer**, finished 13th at the Belgian Championship in 2025 as best result and ranks **6th in the Belgian ranking**. Nicedicer has played 4 editions of the live Belgian Championship since 2022.

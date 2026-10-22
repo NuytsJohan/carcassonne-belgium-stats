@@ -1,5 +1,7 @@
 # Maud Quaniers (mobidic) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Maud Quaniers, known online as **mobidic**, finished 10th at the Belgian Championship in 2024 as best result and ranks **9th in the Belgian ranking**. mobidic has played 3 editions of the live Belgian Championship since 2022.

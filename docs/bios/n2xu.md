@@ -1,5 +1,7 @@
 # Nico Wellemans (N2xU) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Nico Wellemans, known online as **N2xU**, is a **Belgian champion** (2024) and ranks **5th in the Belgian ranking**. N2xU has played 14 editions of the live Belgian Championship since 2010.

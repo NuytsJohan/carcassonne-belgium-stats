@@ -1,5 +1,7 @@
 # Fabian Mouton (FabianM_be) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Fabian Mouton, known online as **FabianM_be**, finished 5th at the Belgian Championship in 2024 as best result and ranks **10th in the Belgian ranking**. FabianM_be has played 3 editions of the live Belgian Championship since 2023.

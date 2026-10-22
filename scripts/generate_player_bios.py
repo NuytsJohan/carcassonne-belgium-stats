@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 import duckdb
@@ -31,6 +32,7 @@ DB_PATH = ROOT / "data" / "carcassonne.duckdb"
 OUT_DIR = ROOT / "docs" / "bios"
 OVERRIDES_PATH = OUT_DIR / "overrides.json"
 MANUAL_MARKER = "<!-- manual -->"
+UPDATED_RE = re.compile(r"\n\n\*Last updated: [^*\n]+\*(?=\n)")
 
 MAX_RIVALS = 8
 MIN_RIVAL_MATCHES = 5
@@ -49,6 +51,10 @@ BCL_LEAGUES = {"ML": "Master League", "GL": "Gold League", "SL": "Silver League"
 def ordinal(n: int) -> str:
     suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"
+
+
+def long_date(d: date) -> str:
+    return f"{d.day} {d:%B %Y}"
 
 
 def slugify(name: str) -> str:
@@ -137,7 +143,7 @@ def load_rivals(con, pid: int) -> list[dict]:
         WHERE e.player_id = ?
         GROUP BY 1, 2, 3
         HAVING count(*) >= ?
-        ORDER BY n DESC, w DESC
+        ORDER BY n DESC, w DESC, lower(p.name)
     """, (pid, MIN_RIVAL_MATCHES))
 
 
@@ -389,7 +395,13 @@ def main() -> None:
             continue
         page = render(p, load_results(con, p["id"]), nations, load_rivals(con, p["id"]),
                       caps[p["id"]], len(team), overrides.get(p["name"], {}))
-        path.write_text(page, encoding="utf-8")
+        old = path.read_text(encoding="utf-8") if path.exists() else ""
+        if UPDATED_RE.search(old) and UPDATED_RE.sub("", old) == page:
+            print(f"  unchanged      {path.name}")
+            continue
+        # The date goes right under the title; it only moves when the content changes.
+        title, rest = page.split("\n", 1)
+        path.write_text(f"{title}\n\n*Last updated: {long_date(date.today())}*\n{rest}", encoding="utf-8")
         print(f"  wrote          {path.name}")
 
     lines = ["# National team player bios", "",

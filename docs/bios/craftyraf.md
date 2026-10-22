@@ -1,5 +1,7 @@
 # Raf Mesotten (CraftyRaf) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Raf Mesotten, known online as **CraftyRaf**, is a **Belgian champion** (2025) and ranks **1st in the Belgian ranking**. CraftyRaf has played 8 editions of the live Belgian Championship since 2016.

@@ -1,5 +1,7 @@
 # Anthony Abbeloos (AnTHology) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Anthony Abbeloos, known online as **AnTHology**, plays for the Belgian national team and ranks **18th in the Belgian ranking**.
@@ -47,8 +49,8 @@ AnTHology's most frequent opponent is N2xU (14 matches, 7–7–0). Against the 
 | N2xU (Nico Wellemans) | 14 | 7–7–0 |
 | 71Knives (Karl Verheyden) | 13 | 5–8–0 |
 | obiwonder (Johan Nuyts) | 12 | 6–6–0 |
-| JinaJina (Nicolas Victor) | 12 | 5–7–0 |
 | Defdamesdompi (Dominic Reberez) | 12 | 5–7–0 |
+| JinaJina (Nicolas Victor) | 12 | 5–7–0 |
 | Nicedicer (Tom De Smedt) | 11 | 7–3–1 |
 | mobidic (Maud Quaniers) | 10 | 3–6–1 |
 | rally8 (Bert Jacobs) | 9 | 5–3–1 |

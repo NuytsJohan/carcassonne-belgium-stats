@@ -1,5 +1,7 @@
 # Bert Jacobs (rally8) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Bert Jacobs, known online as **rally8**, finished 5th at the Belgian Championship in 2022 as best result and ranks **19th in the Belgian ranking**. rally8 has played 1 editions of the live Belgian Championship since 2022.

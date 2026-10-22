@@ -1,5 +1,7 @@
 # Joren De Ridder (MarathonMeeple) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Joren De Ridder, known online as **MarathonMeeple**, is a **2-time Belgian champion** (2015 and 2018) and ranks **8th in the Belgian ranking**. MarathonMeeple has played 9 editions of the live Belgian Championship since 2015.
@@ -51,8 +53,8 @@ MarathonMeeple's most frequent opponent is N2xU (15 matches, 4–10–1).
 | N2xU (Nico Wellemans) | 15 | 4–10–1 |
 | JinaJina (Nicolas Victor) | 14 | 3–10–1 |
 | obiwonder (Johan Nuyts) | 11 | 0–9–2 |
-| mobidic (Maud Quaniers) | 10 | 2–7–1 |
 | Defdamesdompi (Dominic Reberez) | 10 | 2–7–1 |
+| mobidic (Maud Quaniers) | 10 | 2–7–1 |
 | Bangla (Tony Reynolds) | 9 | 4–5–0 |
 | 71Knives (Karl Verheyden) | 7 | 3–4–0 |
 | Baesje (Servaes Hereman) | 7 | 2–4–1 |

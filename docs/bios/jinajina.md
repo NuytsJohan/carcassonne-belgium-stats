@@ -1,5 +1,7 @@
 # Nicolas Victor (JinaJina) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Nicolas Victor, known online as **JinaJina**, is a **Belgian champion** (2022) and ranks **2nd in the Belgian ranking**. JinaJina has played 12 editions of the live Belgian Championship since 2007.

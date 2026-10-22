@@ -1,5 +1,7 @@
 # Ludovic Jahnert (ludojahhjahh) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Ludovic Jahnert, known online as **ludojahhjahh**, plays for the Belgian national team and ranks **15th in the Belgian ranking**.

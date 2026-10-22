@@ -1,5 +1,7 @@
 # Thomas Declerck (valmir79) — Carcassonne bio
 
+*Last updated: 22 October 2026*
+
 ## Bio
 
 Thomas Declerck, known online as **valmir79**, finished 5th at the Belgian Championship in 2025 as best result and ranks **14th in the Belgian ranking**. valmir79 has played 2 editions of the live Belgian Championship since 2024.
