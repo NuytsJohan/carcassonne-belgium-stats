@@ -156,7 +156,8 @@ def bk_result(rank: int) -> str:
 
 
 def honours_rows(results: list[dict]) -> list[dict]:
-    """Notable results: BK top 3, every World Championship, BCOC top 4, BCL podiums.
+    """Notable results: BK top 3, every World Championship, BCOC top 4, BCL Master League
+    finalists and other BCL league winners.
 
     The best BK and BCOC finish is always listed, even outside those cut-offs.
     """
@@ -188,13 +189,19 @@ def honours_rows(results: list[dict]) -> list[dict]:
         if not m:
             continue
         season, tier = m.group(2), m.group(3)
-        if (tier == "ML" and r["final_rank"] <= 3) or r["final_rank"] == 1:
-            res = "**Winner**" if r["final_rank"] == 1 else ordinal(r["final_rank"])
-            if r["field"]:
-                res += f" of {r['field']}"
+        if tier == "ML":
+            # Only the two group winners matter: they meet in the final for ranks 1-2.
+            if r["final_rank"] > 2:
+                continue
+            res = ("**Winner** (group winner, won the final)" if r["final_rank"] == 1
+                   else "Runner-up (group winner, lost the final)")
+        elif r["final_rank"] == 1:
+            res = "**Winner**"
             if r["duels_played"]:
                 res += f" (won {r['duels_won']} of {r['duels_played']} matches)"
-            rows.append({"year": r["year"], "tournament": f"BCL {season} ({BCL_LEAGUES[tier]})", "result": res})
+        else:
+            continue
+        rows.append({"year": r["year"], "tournament": f"BCL {season} ({BCL_LEAGUES[tier]})", "result": res})
     return rows
 
 

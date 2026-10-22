@@ -12,7 +12,7 @@ Best tournament results for Nicedicer.
 
 | Year | Tournament | Result |
 | --- | --- | --- |
-| 2026 | BCL Spring (Master League) | **Winner** of 12 (won 4 of 5 matches) |
+| 2026 | BCL Spring (Master League) | **Winner** (group winner, won the final) |
 | 2025 | Belgian Championship (live) | 13th |
 | 2025 | Belgian Carcassonne Online Cup | 3rd |
 | 2024 | Belgian Carcassonne Online Cup | 3rd |

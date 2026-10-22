@@ -13,7 +13,6 @@ CraftyRaf has represented Belgium at the World Championship once, finishing **3r
 | Year | Tournament | Result |
 | --- | --- | --- |
 | 2026 | Belgian Carcassonne Online Cup | **Winner** |
-| 2026 | BCL Spring (Master League) | 3rd of 12 (won 3 of 5 matches) |
 | 2025 | Belgian Championship (live) | **Champion** |
 | 2025 | World Championship | 3rd of 52 (bronze, equalling the best Belgian result) |
 | 2025 | Belgian Carcassonne Online Cup | 2nd |

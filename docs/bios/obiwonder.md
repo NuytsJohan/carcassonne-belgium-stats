@@ -18,7 +18,7 @@ Four Belgian titles, two runner-up finishes and a World Championship top 6 form 
 | --- | --- | --- |
 | 2026 | World Championship | 5th appearance for Belgium |
 | 2026 | Belgian Championship (live) | **Champion** |
-| 2026 | BCL Spring (Master League) | 2nd of 12 (won 4 of 5 matches) |
+| 2026 | BCL Spring (Master League) | Runner-up (group winner, lost the final) |
 | 2025 | Belgian Championship (live) | Runner-up |
 | 2022 | Belgian Carcassonne Online Cup | 4th |
 | 2021 | World Championship | 6th of 42 |
