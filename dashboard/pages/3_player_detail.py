@@ -15,18 +15,32 @@ BIOS_DIR = Path(__file__).parents[2] / "docs" / "bios"
 ELO_BASE = 1300
 
 
-# ── Read player from session state ───────────────────────────────────────────
+# ── Read player from URL (?player=<slug>&bg=<id>) or session state ───────────
+
+conn = duckdb.connect(str(DB_PATH), read_only=True)
+
+url_slug = st.query_params.get("player")
+if url_slug:
+    # Same slug as the bio files; prefer Belgian players when names collide.
+    row = conn.execute("""
+        SELECT id FROM players
+        WHERE trim(regexp_replace(lower(name), '[^a-z0-9]+', '-', 'g'), '-') = ?
+        ORDER BY (country = 'BE') DESC, id
+        LIMIT 1
+    """, [url_slug]).fetchone()
+    if row:
+        st.session_state["player_detail_id"] = row[0]
+        st.session_state["player_detail_bg"] = int(st.query_params.get("bg", 1))
 
 if "player_detail_id" not in st.session_state:
     st.warning("Select a player first via the Players page.")
     if st.button("← Back to players"):
         st.switch_page("pages/2_players.py")
+    conn.close()
     st.stop()
 
 player_id = st.session_state["player_detail_id"]
 boardgame_id = st.session_state.get("player_detail_bg", 1)
-
-conn = duckdb.connect(str(DB_PATH), read_only=True)
 
 # ── Player info ──────────────────────────────────────────────────────────────
 
@@ -42,6 +56,13 @@ if not player:
     st.stop()
 
 p_id, p_name, p_country, p_bga_id, bg_name = player
+
+# Keep the address bar shareable: /player_detail?player=<slug>
+st.query_params["player"] = slugify(p_name)
+if boardgame_id != 1:
+    st.query_params["bg"] = str(boardgame_id)
+elif "bg" in st.query_params:
+    del st.query_params["bg"]
 
 # ── Header with back button and BGA link ─────────────────────────────────────
 
