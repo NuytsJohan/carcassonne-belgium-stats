@@ -1,4 +1,5 @@
 """Speler detail pagina — ELO evolutie, tegenstanders, statistieken."""
+import re
 import sys
 from pathlib import Path
 
@@ -7,7 +8,10 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
+from scripts.generate_player_bios import slugify
+
 DB_PATH = Path(__file__).parents[2] / "data" / "carcassonne.duckdb"
+BIOS_DIR = Path(__file__).parents[2] / "docs" / "bios"
 ELO_BASE = 1300
 
 
@@ -50,6 +54,17 @@ with col_back:
 with col_bga:
     if p_bga_id:
         st.link_button("🎲 BGA profile", f"https://boardgamearena.com/player?id={p_bga_id}")
+
+# ── Bio (national team players, see scripts/generate_player_bios.py) ────────
+
+bio_path = BIOS_DIR / f"{slugify(p_name)}.md"
+if bio_path.exists():
+    bio = bio_path.read_text(encoding="utf-8")
+    bio = re.sub(r"<!--.*?-->\n?", "", bio, flags=re.S)        # manual markers
+    bio = re.sub(r"\A\s*# .*\n", "", bio)                      # page title is already shown
+    bio = re.sub(r"\[([^\]]+)\]\([^)]+\.md\)", r"\1", bio)     # links to other bio files
+    with st.expander("📖 Bio", expanded=True):
+        st.markdown(bio)
 
 # ── Summary stats ────────────────────────────────────────────────────────────
 
