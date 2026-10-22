@@ -11,6 +11,15 @@ DB_PATH = Path(__file__).parents[2] / "data" / "carcassonne.duckdb"
 
 st.title("🏅 Belgian Ranking")
 
+
+def open_player_on_click(event, df) -> None:
+    """Go to the player detail page for the clicked row of a ranking table."""
+    if event.selection and event.selection.rows:
+        st.session_state["player_detail_id"] = int(df.iloc[event.selection.rows[0]]["player_id"])
+        st.session_state["player_detail_bg"] = 1
+        st.switch_page("pages/3_player_detail.py")
+
+
 if not DB_PATH.exists():
     st.warning("No database found. Import data first.")
     st.stop()
@@ -73,7 +82,10 @@ with tab_composite:
             [name_filter, name_filter],
         ).fetchdf()
 
-        st.dataframe(df.drop(columns=["player_id"]), hide_index=True, use_container_width=True)
+        st.caption("Click a row to open the player's page.")
+        event = st.dataframe(df.drop(columns=["player_id"]), hide_index=True, use_container_width=True,
+                             on_select="rerun", selection_mode="single-row", key="composite_table")
+        open_player_on_click(event, df)
 
         st.markdown("---")
         st.subheader("Breakdown per player")
@@ -175,7 +187,10 @@ with tab_h2h:
             [min_games, h2h_search, h2h_search],
         ).fetchdf()
 
-        st.dataframe(df_h2h.drop(columns=["player_id"]), hide_index=True, use_container_width=True)
+        st.caption("Click a row to open the player's page.")
+        event = st.dataframe(df_h2h.drop(columns=["player_id"]), hide_index=True, use_container_width=True,
+                             on_select="rerun", selection_mode="single-row", key="h2h_table")
+        open_player_on_click(event, df_h2h)
 
         st.markdown("---")
         st.subheader("Rating history per player")
